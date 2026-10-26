@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#174a72">
+  <meta name="description" content="مصروفي - تتبع الراتب والمصروفات والميزانيات دون إنترنت">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>مصروفي | Misroofi</title>
+  <style>
+    :root{--navy:#174a72;--blue:#236ca0;--green:#16784b;--bg:#f3f6fa;--card:#fff;--text:#172435;--muted:#64748b;--red:#b42318;--amber:#a15c00}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+    header{background:linear-gradient(135deg,#174a72,#236ca0);color:white;padding:22px 17px 19px;border-radius:0 0 22px 22px}
+    header h1{margin:0;font-size:25px} header p{margin:5px 0 0;opacity:.9;font-size:13px}
+    main{max-width:760px;margin:auto;padding:14px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .card{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 3px 14px #152b3d0a;margin-bottom:11px}
+    .metric .label{font-size:13px;color:var(--muted)} .metric .value{font-size:clamp(19px,4.5vw,25px);font-weight:750;margin-top:5px;overflow-wrap:anywhere}
+    .green{color:var(--green)} .orange{color:var(--amber)} .red{color:var(--red)}
+    h2{font-size:17px;margin:2px 0 12px}
+    label{display:block;font-size:13px;color:var(--muted);margin:9px 0 5px}
+    input,select,button{font:inherit}
+    input,select{width:100%;border:1px solid #d5dee8;border-radius:10px;padding:11px;background:#fff;color:var(--text);min-height:43px}
+    button{border:0;border-radius:11px;padding:11px 13px;background:var(--blue);color:#fff;font-weight:650;cursor:pointer;min-height:42px}
+    button.secondary{background:#e7eef5;color:#174a72} button.danger{background:#fff0ef;color:var(--red)} button.small{min-height:32px;padding:6px 9px;font-size:12px}
+    .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 13px}
+    .row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf1f5}
+    .row:last-child{border-bottom:0}.row .sub{font-size:12px;color:var(--muted);margin-top:3px}.row .amount{font-weight:700;white-space:nowrap}
+    .bar{height:7px;background:#edf1f5;border-radius:9px;overflow:hidden;margin-top:7px}.bar span{height:100%;display:block;background:#2b9a68;border-radius:9px}
+    .notice{font-size:12px;color:var(--muted);line-height:1.7}
+    .empty{color:var(--muted);font-size:13px;padding:12px 0}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .hidden{display:none!important}
+    footer{text-align:center;color:var(--muted);font-size:11px;padding:8px 15px 22px}
+    @media(min-width:620px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.actions{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  </style>
+</head>
+<body>
+<header>
+  <h1>💸 مصروفي</h1>
+  <p>راتبك بالدولار، مصروفاتك بالشيكل — حتى دون إنترنت</p>
+</header>
+<main>
+  <section class="grid">
+    <div class="card metric"><div class="label">الراتب بالدولار</div><div id="salaryMetric" class="value">$0.00</div></div>
+    <div class="card metric"><div class="label">قيمة الراتب بالشيكل</div><div id="salaryILSMetric" class="value">₪0.00</div></div>
+    <div class="card metric"><div class="label">المصروفات في الدورة</div><div id="spentMetric" class="value orange">₪0.00</div></div>
+    <div class="card metric"><div class="label">الرصيد المتبقي</div><div id="balanceMetric" class="value green">₪0.00</div></div>
+  </section>
+  <div class="card">
+    <h2>📅 دورة الراتب الحالية</h2>
+    <div id="cycleSummary" class="notice">لم يتم إعداد الراتب بعد.</div>
+    <div class="actions">
+      <button id="cycleBtn">إعداد / راتب جديد</button>
+      <button id="exportBtn" class="secondary">تصدير نسخة احتياطية</button>
+      <button id="importBtn" class="secondary">استيراد نسخة احتياطية</button>
+      <input id="importFile" type="file" accept="application/json,.json" class="hidden">
+    </div>
+    <div class="notice">عند نزول الراتب، اضغطي «إعداد / راتب جديد» وابدئي دورة بتاريخ الاستلام الجديد. لا يتم مسح مصروفات الدورات السابقة.</div>
+  </div>
+  <div class="card">
+    <h2>➕ إضافة مصروف</h2>
+    <form id="expenseForm">
+      <div class="two">
+        <div><label for="amount">المبلغ بالشيكل</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="مثلاً 25"></div>
+        <div><label for="category">التصنيف</label><select id="category"></select></div>
+      </div>
+      <label for="note">ملاحظة (اختيارية)</label><input id="note" maxlength="100" placeholder="مثلاً مشتريات البيت">
+      <label for="spentOn">تاريخ المصروف</label><input id="spentOn" type="date" required>
+      <button type="submit" style="width:100%;margin-top:12px">حفظ المصروف</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>🎯 ميزانية التصنيفات</h2>
+    <label for="budgetCategory">التصنيف</label><select id="budgetCategory"></select>
+    <div class="two">
+      <div><label for="budgetLimit">الحد بالشيكل</label><input id="budgetLimit" type="number" min="0" step="0.01" placeholder="مثلاً 300"></div>
+      <div style="display:flex;align-items:end"><button id="saveBudget" type="button" style="width:100%">حفظ الميزانية</button></div>
+    </div>
+    <div id="budgetsList" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h2>📊 المصروفات حسب التصنيف</h2>
+    <div id="categorySummary"></div>
+  </div>
+  <div class="card">
+    <h2>🧾 آخر المصروفات</h2>
+    <div id="expensesList"></div>
+    <button id="clearBtn" class="danger small" style="margin-top:12px">حذف كل البيانات من هذا الجهاز</button>
+  </div>
+  <footer>تُحفظ البيانات على هذا الجهاز فقط. خذي نسخة احتياطية بانتظام، خصوصًا قبل مسح بيانات المتصفح.</footer>
+</main>
+<script>
+const CATEGORIES=["الطعام","البقالة","المنزل","المواصلات","التسوق","الصحة","التعليم","الترفيه","الفواتير","أخرى"];
+const KEY="misroofi_pwa_v1";
+const today=()=>new Date().toLocaleDateString("en-CA");
+const defaultData=()=>({salaryUSD:0,rate:3.5,cycleStart:"",cycleSalaryUSD:0,cycleRate:3.5,expenses:[],budgets:{}});
+let data=loadData();
+function loadData(){try{return {...defaultData(),...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch(e){return defaultData()}}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function money(v){return "₪"+Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function dollars(v){return "$"+Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function cycleExpenses(){return data.expenses.filter(e=>data.cycleStart && e.date>=data.cycleStart && e.date<=today())}
+function totals(){const t={};cycleExpenses().forEach(e=>t[e.category]=(t[e.category]||0)+Number(e.amount));return t}
+function fillSelects(){for(const id of ["category","budgetCategory"]){const s=document.getElementById(id);s.innerHTML=CATEGORIES.map(c=>`<option>${c}</option>`).join("")}}
+function render(){
+ const es=cycleExpenses(),spent=es.reduce((a,e)=>a+Number(e.amount),0),salaryILS=Number(data.cycleSalaryUSD)*Number(data.cycleRate),balance=salaryILS-spent,pct=salaryILS>0?spent/salaryILS*100:0;
+ document.getElementById("salaryMetric").textContent=dollars(data.cycleSalaryUSD);
+ document.getElementById("salaryILSMetric").textContent=money(salaryILS);
+ document.getElementById("spentMetric").textContent=money(spent);
+ const b=document.getElementById("balanceMetric");b.textContent=money(balance);b.className="value "+(balance<0?"red":"green");
+ document.getElementById("cycleSummary").textContent=data.cycleStart?`بدأت الدورة في ${data.cycleStart}. سعر الصرف المحفوظ لهذه الدورة: 1 دولار = ${Number(data.cycleRate).toFixed(3)} شيكل. تم استخدام ${pct.toFixed(1)}% من الراتب المحوّل.`:"اضبطي الراتب وسعر الصرف وتاريخ نزول الراتب للبدء.";
+ const t=totals(),sum=document.getElementById("categorySummary");
+ const active=CATEGORIES.filter(c=>(t[c]||0)>0 || Number(data.budgets[c]||0)>0);
+ sum.innerHTML=active.length?active.map(c=>{const used=t[c]||0,lim=Number(data.budgets[c]||0),p=lim>0?used/lim*100:0;let status=lim>0?(p>=100?"تجاوزتِ الحد":p>=80?"اقتربتِ من الحد":"ضمن الميزانية"):"لم تحددي حدًا";return `<div class="row"><div style="flex:1"><strong>${esc(c)}</strong><div class="sub">${lim>0?`الميزانية ${money(lim)} · ${p.toFixed(0)}% مستخدم · ${status}`:"ميزانية غير محددة"}</div>${lim>0?`<div class="bar"><span style="width:${Math.min(100,p)}%;background:${p>=100?'#c53b32':p>=80?'#d99323':'#2b9a68'}"></span></div>`:""}</div><div class="amount">${money(used)}</div></div>`}).join(""):'<div class="empty">لا توجد مصروفات بعد. ابدئي بإضافة أول مصروف.</div>';
+ const bl=document.getElementById("budgetsList");const bc=CATEGORIES.filter(c=>Number(data.budgets[c]||0)>0);bl.innerHTML=bc.length?bc.map(c=>`<div class="row"><div><strong>${esc(c)}</strong><div class="sub">الحد: ${money(data.budgets[c])}</div></div><button class="secondary small" data-edit-budget="${esc(c)}">تعديل</button></div>`).join(""):'<div class="empty">لم تضعي ميزانيات بعد.</div>';
+ document.getElementById("expensesList").innerHTML=es.length?es.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,20).map(e=>`<div class="row"><div style="flex:1"><strong>${esc(e.category)}</strong><div class="sub">${esc(e.date)}${e.note?" · "+esc(e.note):""}</div></div><div class="amount">${money(e.amount)} <button class="danger small" data-delete="${e.id}" aria-label="حذف">×</button></div></div>`).join(""):'<div class="empty">لا توجد مصروفات في دورة الراتب الحالية.</div>';
+ document.querySelectorAll("[data-delete]").forEach(btn=>btn.onclick=()=>{if(confirm("حذف هذا المصروف؟")){data.expenses=data.expenses.filter(e=>e.id!==Number(btn.dataset.delete));save()}});
+ document.querySelectorAll("[data-edit-budget]").forEach(btn=>btn.onclick=()=>{document.getElementById("budgetCategory").value=btn.dataset.editBudget;document.getElementById("budgetLimit").value=data.budgets[btn.dataset.editBudget]||0});
+}
+function setupCycle(){
+ const salary=prompt("أدخلي الراتب بالدولار:",String(data.salaryUSD||""));
+ if(salary===null)return;const s=Number(salary);if(!Number.isFinite(s)||s<=0){alert("أدخلي راتبًا أكبر من صفر.");return}
+ const rate=prompt("كم شيكل يساوي الدولار الواحد؟",String(data.rate||3.5));
+ if(rate===null)return;const r=Number(rate);if(!Number.isFinite(r)||r<=0){alert("أدخلي سعر صرف أكبر من صفر.");return}
+ const start=prompt("تاريخ نزول الراتب (YYYY-MM-DD):",today());if(start===null)return;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||start>today()){alert("تحققي من التاريخ. استخدمي YYYY-MM-DD ولا تختاري تاريخًا مستقبليًا.");return}
+ if(data.cycleStart && start<data.cycleStart){if(!confirm("التاريخ أقدم من بداية الدورة الحالية. هل تريدين المتابعة؟"))return}
+ data.salaryUSD=s;data.rate=r;data.cycleSalaryUSD=s;data.cycleRate=r;data.cycleStart=start;save();
+}
+document.getElementById("cycleBtn").onclick=setupCycle;
+document.getElementById("spentOn").value=today();
+document.getElementById("expenseForm").onsubmit=e=>{e.preventDefault();if(!data.cycleStart){alert("أعدّي دورة الراتب أولًا.");return}const amount=Number(document.getElementById("amount").value),date=document.getElementById("spentOn").value;if(!(amount>0)||!date){alert("أدخلي مبلغًا وتاريخًا صحيحين.");return}data.expenses.push({id:Date.now(),amount,category:document.getElementById("category").value,note:document.getElementById("note").value.trim(),date});const cat=document.getElementById("category").value;document.getElementById("amount").value="";document.getElementById("note").value="";save();const lim=Number(data.budgets[cat]||0),used=totals()[cat]||0;if(lim>0&&used>=lim*.8)alert(`تنبيه الميزانية: مصروفات ${cat} وصلت إلى ${Math.round(used/lim*100)}% من الحد (${money(lim)}).`)};
+document.getElementById("saveBudget").onclick=()=>{const c=document.getElementById("budgetCategory").value,v=Number(document.getElementById("budgetLimit").value);if(!Number.isFinite(v)||v<0){alert("أدخلي حدًا صحيحًا، أو صفرًا لإزالة الميزانية.");return}if(v===0)delete data.budgets[c];else data.budgets[c]=v;document.getElementById("budgetLimit").value="";save()};
+document.getElementById("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="misroofi-backup-"+today()+".json";a.click();URL.revokeObjectURL(url)};
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const imported=JSON.parse(await f.text());if(!Array.isArray(imported.expenses)||!imported.budgets)throw Error();if(confirm("سيتم استبدال البيانات الموجودة على هذا الجهاز بالنسخة المستوردة. متابعة؟")){data={...defaultData(),...imported};save();alert("تم استيراد النسخة الاحتياطية.")}}catch(err){alert("تعذر قراءة الملف. اختاري نسخة احتياطية صادرة من مصروفي.")}e.target.value=""};
+document.getElementById("clearBtn").onclick=()=>{if(confirm("تأكيد حذف جميع بيانات مصروفي من هذا الجهاز؟ لا يمكن التراجع.")){data=defaultData();save()}};
+fillSelects();render();
+if("serviceWorker" in navigator && location.protocol!=="file:"){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}
+</script>
+</body>
+</html>

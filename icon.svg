@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="112" fill="#174a72"/>
+<circle cx="256" cy="256" r="158" fill="#fff" opacity=".12"/>
+<path d="M153 178h206a20 20 0 0 1 20 20v140a24 24 0 0 1-24 24H157a24 24 0 0 1-24-24V202a24 24 0 0 1 20-24z" fill="#fff"/>
+<path d="M159 178v-18a24 24 0 0 1 24-24h145" fill="none" stroke="#fff" stroke-width="20" stroke-linecap="round"/>
+<text x="256" y="292" font-family="Arial,sans-serif" font-size="95" font-weight="700" text-anchor="middle" fill="#174a72">₪</text>
+<circle cx="343" cy="329" r="32" fill="#34b67a"/><path d="M329 329l10 10 19-22" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

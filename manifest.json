@@ -1,0 +1,15 @@
+{
+  "name": "مصروفي | Misroofi",
+  "short_name": "مصروفي",
+  "description": "تتبع الراتب والمصروفات والميزانيات دون إنترنت",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#174a72",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
+  ]
+}
