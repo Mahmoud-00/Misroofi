@@ -61,6 +61,11 @@
     <div class="notice">عند نزول الراتب، اضغطي «إعداد / راتب جديد» وابدئي دورة بتاريخ الاستلام الجديد. لا يتم مسح مصروفات الدورات السابقة.</div>
   </div>
   <div class="card">
+    <h2>🗂️ سجل الرواتب السابقة</h2>
+    <div class="notice">يُحفظ ملخص كل دورة راتب عند بدء دورة جديدة، بما في ذلك الراتب وسعر الصرف والمصروفات المسجلة خلالها.</div>
+    <div id="salaryHistoryList" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
     <h2>➕ إضافة مصروف</h2>
     <form id="expenseForm">
       <div class="two">
@@ -71,6 +76,15 @@
       <label for="spentOn">تاريخ المصروف</label><input id="spentOn" type="date" required>
       <button type="submit" style="width:100%;margin-top:12px">حفظ المصروف</button>
     </form>
+  </div>
+  <div class="card">
+    <h2>⚙️ إدارة التصنيفات</h2>
+    <div class="two">
+      <div><label for="newCategoryName">إضافة تصنيف جديد</label><input id="newCategoryName" maxlength="30" placeholder="مثلاً: مواصلات العمل"></div>
+      <div style="display:flex;align-items:end"><button id="addCategoryBtn" type="button" style="width:100%">إضافة التصنيف</button></div>
+    </div>
+    <div class="notice" style="margin-top:8px">تقدري تضيفي تصنيفات، وتغيّري أسماءها، وتحذفيها. عند تغيير الاسم سيتم تحديث المصروفات والميزانية المرتبطة به.</div>
+    <div id="manageCategoriesList" style="margin-top:8px"></div>
   </div>
   <div class="card">
     <h2>🎯 ميزانية التصنيفات</h2>
@@ -93,19 +107,30 @@
   <footer>تُحفظ البيانات على هذا الجهاز فقط. خذي نسخة احتياطية بانتظام، خصوصًا قبل مسح بيانات المتصفح.</footer>
 </main>
 <script>
-const CATEGORIES=["الطعام","البقالة","المنزل","المواصلات","التسوق","الصحة","التعليم","الترفيه","الفواتير","أخرى"];
+const DEFAULT_CATEGORIES=["الطعام","البقالة","المنزل","المواصلات","التسوق","الصحة","التعليم","الترفيه","الفواتير","أخرى"];
 const KEY="misroofi_pwa_v1";
 const today=()=>new Date().toLocaleDateString("en-CA");
-const defaultData=()=>({salaryUSD:0,rate:3.5,cycleStart:"",cycleSalaryUSD:0,cycleRate:3.5,expenses:[],budgets:{}});
+const defaultData=()=>({salaryUSD:0,rate:3.5,cycleStart:"",cycleSalaryUSD:0,cycleRate:3.5,expenses:[],budgets:{},categories:[...DEFAULT_CATEGORIES],salaryHistory:[]});
 let data=loadData();
-function loadData(){try{return {...defaultData(),...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch(e){return defaultData()}}
+function loadData(){try{const saved=JSON.parse(localStorage.getItem(KEY)||"{}");const d={...defaultData(),...saved};if(!Array.isArray(d.categories)||!d.categories.length)d.categories=[...DEFAULT_CATEGORIES];if(!Array.isArray(d.salaryHistory))d.salaryHistory=[];return d}catch(e){return defaultData()}}
+function categories(){return data.categories}
 function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
 function money(v){return "₪"+Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function dollars(v){return "$"+Number(v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function cycleExpenses(){return data.expenses.filter(e=>data.cycleStart && e.date>=data.cycleStart && e.date<=today())}
 function totals(){const t={};cycleExpenses().forEach(e=>t[e.category]=(t[e.category]||0)+Number(e.amount));return t}
-function fillSelects(){for(const id of ["category","budgetCategory"]){const s=document.getElementById(id);s.innerHTML=CATEGORIES.map(c=>`<option>${c}</option>`).join("")}}
+function fillSelects(){for(const id of ["category","budgetCategory"]){const s=document.getElementById(id),old=s.value;s.innerHTML=categories().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");if(categories().includes(old))s.value=old}}
+function renderManagedCategories(){const el=document.getElementById("manageCategoriesList");el.innerHTML=categories().map(c=>`<div class="row"><div style="flex:1"><strong>${esc(c)}</strong></div><div style="display:flex;gap:6px"><button type="button" class="secondary small" data-rename-category="${esc(c)}">تغيير الاسم</button><button type="button" class="danger small" data-remove-category="${esc(c)}">حذف</button></div></div>`).join("");
+ el.querySelectorAll("[data-rename-category]").forEach(btn=>btn.onclick=()=>{const old=btn.dataset.renameCategory;const next=prompt("اكتبي الاسم الجديد للتصنيف:",old);if(next===null)return;const name=next.trim();if(!name){alert("اسم التصنيف لا يمكن أن يكون فارغًا.");return}if(name.length>30){alert("اسم التصنيف يجب ألا يتجاوز 30 حرفًا.");return}if(categories().some(c=>c.toLowerCase()===name.toLowerCase()&&c!==old)){alert("هذا التصنيف موجود بالفعل.");return}data.categories=data.categories.map(c=>c===old?name:c);data.expenses.forEach(e=>{if(e.category===old)e.category=name});if(Object.prototype.hasOwnProperty.call(data.budgets,old)){data.budgets[name]=data.budgets[old];delete data.budgets[old]}fillSelects();save()});
+ el.querySelectorAll("[data-remove-category]").forEach(btn=>btn.onclick=()=>{const name=btn.dataset.removeCategory;if(categories().length<=1){alert("لازم يبقى عندك تصنيف واحد على الأقل.");return}if(!confirm(`حذف تصنيف «${name}»؟ سيتم نقل مصروفاته إلى تصنيف آخر حتى لا تضيع.`))return;const replacement=categories().find(c=>c!==name);data.expenses.forEach(e=>{if(e.category===name)e.category=replacement});delete data.budgets[name];data.categories=categories().filter(c=>c!==name);fillSelects();save()});
+}
+function renderSalaryHistory(){
+ const el=document.getElementById("salaryHistoryList");
+ const history=(data.salaryHistory||[]).slice().reverse();
+ el.innerHTML=history.length?history.map(h=>`<div class="row" style="align-items:flex-start"><div style="flex:1"><strong>${esc(h.startDate||"تاريخ غير محدد")} — ${esc(h.endDate||"")}</strong><div class="sub">الراتب: ${dollars(h.salaryUSD)} · سعر الصرف: ${Number(h.rate||0).toFixed(3)} ₪/$</div><div class="sub">قيمة الراتب: ${money(Number(h.salaryUSD||0)*Number(h.rate||0))} · المصروفات المسجلة: ${money(h.spentILS)} · عدد المصروفات: ${Number(h.expenseCount||0)}</div></div><button type="button" class="danger small" data-delete-history="${esc(h.id)}">حذف السجل</button></div>`).join(""):'<div class="empty">لسه ما في رواتب سابقة. رح يظهر أول سجل لما تبدئي دورة راتب جديدة بعد الدورة الحالية.</div>';
+ el.querySelectorAll("[data-delete-history]").forEach(btn=>btn.onclick=()=>{if(confirm("حذف سجل دورة الراتب هذه؟ لن تُحذف المصروفات الأصلية.")){data.salaryHistory=data.salaryHistory.filter(h=>String(h.id)!==btn.dataset.deleteHistory);save()}});
+}
 function render(){
  const es=cycleExpenses(),spent=es.reduce((a,e)=>a+Number(e.amount),0),salaryILS=Number(data.cycleSalaryUSD)*Number(data.cycleRate),balance=salaryILS-spent,pct=salaryILS>0?spent/salaryILS*100:0;
  document.getElementById("salaryMetric").textContent=dollars(data.cycleSalaryUSD);
@@ -114,13 +139,16 @@ function render(){
  const b=document.getElementById("balanceMetric");b.textContent=money(balance);b.className="value "+(balance<0?"red":"green");
  document.getElementById("cycleSummary").textContent=data.cycleStart?`بدأت الدورة في ${data.cycleStart}. سعر الصرف المحفوظ لهذه الدورة: 1 دولار = ${Number(data.cycleRate).toFixed(3)} شيكل. تم استخدام ${pct.toFixed(1)}% من الراتب المحوّل.`:"اضبطي الراتب وسعر الصرف وتاريخ نزول الراتب للبدء.";
  const t=totals(),sum=document.getElementById("categorySummary");
- const active=CATEGORIES.filter(c=>(t[c]||0)>0 || Number(data.budgets[c]||0)>0);
+ const active=categories().filter(c=>(t[c]||0)>0 || Number(data.budgets[c]||0)>0);
  sum.innerHTML=active.length?active.map(c=>{const used=t[c]||0,lim=Number(data.budgets[c]||0),p=lim>0?used/lim*100:0;let status=lim>0?(p>=100?"تجاوزتِ الحد":p>=80?"اقتربتِ من الحد":"ضمن الميزانية"):"لم تحددي حدًا";return `<div class="row"><div style="flex:1"><strong>${esc(c)}</strong><div class="sub">${lim>0?`الميزانية ${money(lim)} · ${p.toFixed(0)}% مستخدم · ${status}`:"ميزانية غير محددة"}</div>${lim>0?`<div class="bar"><span style="width:${Math.min(100,p)}%;background:${p>=100?'#c53b32':p>=80?'#d99323':'#2b9a68'}"></span></div>`:""}</div><div class="amount">${money(used)}</div></div>`}).join(""):'<div class="empty">لا توجد مصروفات بعد. ابدئي بإضافة أول مصروف.</div>';
- const bl=document.getElementById("budgetsList");const bc=CATEGORIES.filter(c=>Number(data.budgets[c]||0)>0);bl.innerHTML=bc.length?bc.map(c=>`<div class="row"><div><strong>${esc(c)}</strong><div class="sub">الحد: ${money(data.budgets[c])}</div></div><button class="secondary small" data-edit-budget="${esc(c)}">تعديل</button></div>`).join(""):'<div class="empty">لم تضعي ميزانيات بعد.</div>';
+ const bl=document.getElementById("budgetsList");const bc=categories().filter(c=>Number(data.budgets[c]||0)>0);bl.innerHTML=bc.length?bc.map(c=>`<div class="row"><div><strong>${esc(c)}</strong><div class="sub">الحد: ${money(data.budgets[c])}</div></div><button class="secondary small" data-edit-budget="${esc(c)}">تعديل</button></div>`).join(""):'<div class="empty">لم تضعي ميزانيات بعد.</div>';
  document.getElementById("expensesList").innerHTML=es.length?es.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,20).map(e=>`<div class="row"><div style="flex:1"><strong>${esc(e.category)}</strong><div class="sub">${esc(e.date)}${e.note?" · "+esc(e.note):""}</div></div><div class="amount">${money(e.amount)} <button class="danger small" data-delete="${e.id}" aria-label="حذف">×</button></div></div>`).join(""):'<div class="empty">لا توجد مصروفات في دورة الراتب الحالية.</div>';
  document.querySelectorAll("[data-delete]").forEach(btn=>btn.onclick=()=>{if(confirm("حذف هذا المصروف؟")){data.expenses=data.expenses.filter(e=>e.id!==Number(btn.dataset.delete));save()}});
  document.querySelectorAll("[data-edit-budget]").forEach(btn=>btn.onclick=()=>{document.getElementById("budgetCategory").value=btn.dataset.editBudget;document.getElementById("budgetLimit").value=data.budgets[btn.dataset.editBudget]||0});
+ renderManagedCategories();
+ renderSalaryHistory();
 }
+document.getElementById("addCategoryBtn").onclick=()=>{const input=document.getElementById("newCategoryName"),name=input.value.trim();if(!name){alert("اكتبي اسم التصنيف أولًا.");return}if(name.length>30){alert("اسم التصنيف يجب ألا يتجاوز 30 حرفًا.");return}if(categories().some(c=>c.toLowerCase()===name.toLowerCase())){alert("هذا التصنيف موجود بالفعل.");return}data.categories.push(name);input.value="";fillSelects();save()};
 function setupCycle(){
  const salary=prompt("أدخلي الراتب بالدولار:",String(data.salaryUSD||""));
  if(salary===null)return;const s=Number(salary);if(!Number.isFinite(s)||s<=0){alert("أدخلي راتبًا أكبر من صفر.");return}
@@ -129,6 +157,20 @@ function setupCycle(){
  const start=prompt("تاريخ نزول الراتب (YYYY-MM-DD):",today());if(start===null)return;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||start>today()){alert("تحققي من التاريخ. استخدمي YYYY-MM-DD ولا تختاري تاريخًا مستقبليًا.");return}
  if(data.cycleStart && start<data.cycleStart){if(!confirm("التاريخ أقدم من بداية الدورة الحالية. هل تريدين المتابعة؟"))return}
+ if(data.cycleStart && start!==data.cycleStart){
+   const oldCycleExpenses=data.expenses.filter(e=>e.date>=data.cycleStart && e.date<start);
+   const oldSpent=oldCycleExpenses.reduce((sum,e)=>sum+Number(e.amount||0),0);
+   data.salaryHistory=data.salaryHistory||[];
+   data.salaryHistory.push({
+     id:Date.now(),
+     startDate:data.cycleStart,
+     endDate:(()=>{const d=new Date(start+"T12:00:00");d.setDate(d.getDate()-1);return d.toISOString().slice(0,10)})(),
+     salaryUSD:Number(data.cycleSalaryUSD||0),
+     rate:Number(data.cycleRate||0),
+     spentILS:oldSpent,
+     expenseCount:oldCycleExpenses.length
+   });
+ }
  data.salaryUSD=s;data.rate=r;data.cycleSalaryUSD=s;data.cycleRate=r;data.cycleStart=start;save();
 }
 document.getElementById("cycleBtn").onclick=setupCycle;
@@ -137,7 +179,7 @@ document.getElementById("expenseForm").onsubmit=e=>{e.preventDefault();if(!data.
 document.getElementById("saveBudget").onclick=()=>{const c=document.getElementById("budgetCategory").value,v=Number(document.getElementById("budgetLimit").value);if(!Number.isFinite(v)||v<0){alert("أدخلي حدًا صحيحًا، أو صفرًا لإزالة الميزانية.");return}if(v===0)delete data.budgets[c];else data.budgets[c]=v;document.getElementById("budgetLimit").value="";save()};
 document.getElementById("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="misroofi-backup-"+today()+".json";a.click();URL.revokeObjectURL(url)};
 document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
-document.getElementById("importFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const imported=JSON.parse(await f.text());if(!Array.isArray(imported.expenses)||!imported.budgets)throw Error();if(confirm("سيتم استبدال البيانات الموجودة على هذا الجهاز بالنسخة المستوردة. متابعة؟")){data={...defaultData(),...imported};save();alert("تم استيراد النسخة الاحتياطية.")}}catch(err){alert("تعذر قراءة الملف. اختاري نسخة احتياطية صادرة من مصروفي.")}e.target.value=""};
+document.getElementById("importFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const imported=JSON.parse(await f.text());if(!Array.isArray(imported.expenses)||!imported.budgets)throw Error();if(confirm("سيتم استبدال البيانات الموجودة على هذا الجهاز بالنسخة المستوردة. متابعة؟")){data={...defaultData(),...imported};if(!Array.isArray(data.categories)||!data.categories.length)data.categories=[...DEFAULT_CATEGORIES];if(!Array.isArray(data.salaryHistory))data.salaryHistory=[];save();alert("تم استيراد النسخة الاحتياطية.")}}catch(err){alert("تعذر قراءة الملف. اختاري نسخة احتياطية صادرة من مصروفي.")}e.target.value=""};
 document.getElementById("clearBtn").onclick=()=>{if(confirm("تأكيد حذف جميع بيانات مصروفي من هذا الجهاز؟ لا يمكن التراجع.")){data=defaultData();save()}};
 fillSelects();render();
 if("serviceWorker" in navigator && location.protocol!=="file:"){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}
